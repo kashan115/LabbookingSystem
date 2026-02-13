@@ -32,3 +32,27 @@ pids
 .devcontainer/
 
 .spark-workbench-id
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Docker
+docker-compose.override.yml
+
+# Database
+*.sql
+mysql_data/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

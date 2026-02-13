@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  name      String
+  email     String    @unique
+  password  String
+  isAdmin   Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  bookings  Booking[]
+
+  @@index([email])
+}
+
+model Server {
+  id            String    @id @default(uuid())
+  name          String    @unique
+  cpuSpec       String    @map("cpu_spec")
+  memorySpec    String    @map("memory_spec")
+  storageSpec   String    @map("storage_spec")
+  gpuSpec       String?   @map("gpu_spec")
+  status        ServerStatus @default(available)
+  location      String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  bookings      Booking[]
+
+  @@index([status])
+  @@index([name])
+}
+
+model Booking {
+  id                      String        @id @default(uuid())
+  serverId                String        @map("server_id")
+  userId                  String        @map("user_id")
+  startDate               DateTime      @map("start_date")
+  endDate                 DateTime      @map("end_date")
+  purpose                 String        @db.Text
+  status                  BookingStatus @default(active)
+  renewalNotificationSent Boolean       @default(false) @map("renewal_notification_sent")
+  daysBooked              Int           @map("days_booked")
+  createdAt               DateTime      @default(now()) @map("created_at")
+  updatedAt               DateTime      @updatedAt @map("updated_at")
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([serverId])
+  @@index([userId])
+  @@index([status])
+  @@index([startDate, endDate])
+}
+
+enum ServerStatus {
+  available
+  booked
+  maintenance
+  offline
+}
+
+enum BookingStatus {
+  active
+  completed
+  cancelled
+  pending_renewal
+}
