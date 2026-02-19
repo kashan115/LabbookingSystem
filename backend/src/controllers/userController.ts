@@ -105,3 +105,47 @@ export const getUserById = async (req: AuthRequest, res: Response, next: NextFun
     next(error);
   }
 };
+
+export const getAllUsers = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true, name: true, email: true, isAdmin: true, createdAt: true,
+        _count: { select: { bookings: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ status: 'success', data: users });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteUser = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    if (id === req.user!.id) throw new AppError(400, 'Cannot delete your own account');
+    await prisma.session.deleteMany({ where: { userId: id } });
+    await prisma.user.delete({ where: { id } });
+    res.json({ status: 'success', message: 'User deleted' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const toggleAdmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    if (id === req.user!.id) throw new AppError(400, 'Cannot change your own admin status');
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) throw new AppError(404, 'User not found');
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { isAdmin: !user.isAdmin },
+      select: { id: true, name: true, email: true, isAdmin: true },
+    });
+    res.json({ status: 'success', data: updated });
+  } catch (error) {
+    next(error);
+  }
+};

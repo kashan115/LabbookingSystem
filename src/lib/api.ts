@@ -127,3 +127,21 @@ export interface CreateBookingPayload {
   endDate: string;
   purpose: string;
 }
+
+// ── Users (admin) ─────────────────────────────────────────────────
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  isAdmin: boolean;
+  createdAt: string;
+  _count?: { bookings: number };
+}
+
+export const usersApi = {
+  list: () => request<AdminUser[]>('/users'),
+  remove: (id: string) => request<void>(`/users/${id}`, { method: 'DELETE' }),
+  toggleAdmin: (id: string) => request<AdminUser>(`/users/${id}/toggle-admin`, { method: 'PATCH' }),
+  register: (name: string, email: string, password: string, isAdmin?: boolean) =>
+    request<AdminUser>('/users/register', { method: 'POST', body: JSON.stringify({ name, email, password, isAdmin }) }),
+};
