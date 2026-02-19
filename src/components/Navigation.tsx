@@ -1,10 +1,10 @@
-import { User } from '@/lib/types';
+import { AppUser } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Database, Calendar, Plus, SignOut, UserCircle } from '@phosphor-icons/react';
+import { Database, Calendar, Gear, Desktop, SignOut, UserCircle } from '@phosphor-icons/react';
 
 interface NavigationProps {
-  currentUser: User;
+  currentUser: AppUser;
   activeTab: string;
   onTabChange: (tab: string) => void;
   onLogout: () => void;
@@ -12,9 +12,10 @@ interface NavigationProps {
 
 export function Navigation({ currentUser, activeTab, onTabChange, onLogout }: NavigationProps) {
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: Database },
-    { id: 'bookings', label: 'My Bookings', icon: Calendar },
-    ...(currentUser.isAdmin ? [{ id: 'admin', label: 'Admin', icon: Plus }] : []),
+    { id: 'dashboard', label: 'Dashboard',    icon: Database },
+    { id: 'servers',   label: 'Servers',       icon: Desktop  },
+    { id: 'bookings',  label: 'My Bookings',   icon: Calendar },
+    ...(currentUser.isAdmin ? [{ id: 'admin', label: 'Admin', icon: Gear }] : []),
   ];
 
   return (
@@ -26,7 +27,7 @@ export function Navigation({ currentUser, activeTab, onTabChange, onLogout }: Na
               <Database size={24} className="text-primary" />
               <h1 className="text-xl font-bold">Lab Booking</h1>
             </div>
-            
+
             <nav className="flex items-center gap-1">
               {tabs.map(tab => {
                 const Icon = tab.icon;
@@ -51,18 +52,10 @@ export function Navigation({ currentUser, activeTab, onTabChange, onLogout }: Na
               <UserCircle size={20} className="text-muted-foreground" />
               <span className="text-sm font-medium">{currentUser.name}</span>
               {currentUser.isAdmin && (
-                <Badge variant="secondary" className="text-xs">
-                  Admin
-                </Badge>
+                <Badge variant="secondary" className="text-xs">Admin</Badge>
               )}
             </div>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onLogout}
-              className="flex items-center gap-2"
-            >
+            <Button variant="outline" size="sm" onClick={onLogout} className="flex items-center gap-2">
               <SignOut size={16} />
               Sign Out
             </Button>

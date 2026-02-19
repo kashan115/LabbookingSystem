@@ -114,6 +114,7 @@ export interface BookingData {
 }
 
 export interface CreateServerPayload {
+  status?: 'available' | 'booked' | 'maintenance' | 'offline';
   name: string;
   specifications: { cpu: string; memory: string; storage: string; gpu?: string };
   location: string;

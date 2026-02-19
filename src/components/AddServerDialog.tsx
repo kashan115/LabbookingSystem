@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Server } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,93 +8,62 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, Warning } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
+type ServerPayload = {
+  name: string;
+  specifications: { cpu: string; memory: string; storage: string; gpu?: string };
+  location: string;
+  status?: string;
+};
+
 interface AddServerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onServerAdd: (server: Omit<Server, 'id'>) => void;
+  onServerAdd: (server: ServerPayload) => Promise<unknown>;
 }
 
 export function AddServerDialog({ open, onOpenChange, onServerAdd }: AddServerDialogProps) {
   const [formData, setFormData] = useState({
-    name: '',
-    cpu: '',
-    memory: '',
-    storage: '',
-    gpu: '',
-    location: '',
-    status: 'available' as Server['status'],
+    name: '', cpu: '', memory: '', storage: '', gpu: '', location: '', status: 'available',
   });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = () => {
-    setFormData({
-      name: '',
-      cpu: '',
-      memory: '',
-      storage: '',
-      gpu: '',
-      location: '',
-      status: 'available',
-    });
+    setFormData({ name: '', cpu: '', memory: '', storage: '', gpu: '', location: '', status: 'available' });
     setError(null);
     setIsSubmitting(false);
   };
 
-  const handleClose = () => {
-    resetForm();
-    onOpenChange(false);
-  };
+  const handleClose = () => { resetForm(); onOpenChange(false); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!formData.name.trim())                                         { setError('Server name is required'); return; }
+    if (!formData.cpu.trim() || !formData.memory.trim() || !formData.storage.trim()) { setError('CPU, Memory, and Storage are required'); return; }
+    if (!formData.location.trim())                                     { setError('Location is required'); return; }
     setIsSubmitting(true);
-
-    // Validate required fields
-    if (!formData.name.trim()) {
-      setError('Server name is required');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!formData.cpu.trim() || !formData.memory.trim() || !formData.storage.trim()) {
-      setError('CPU, Memory, and Storage specifications are required');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!formData.location.trim()) {
-      setError('Location is required');
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
-      const serverData: Omit<Server, 'id'> = {
+      await onServerAdd({
         name: formData.name.trim(),
         specifications: {
           cpu: formData.cpu.trim(),
           memory: formData.memory.trim(),
           storage: formData.storage.trim(),
-          gpu: formData.gpu.trim() || undefined,
+          ...(formData.gpu.trim() ? { gpu: formData.gpu.trim() } : {}),
         },
         status: formData.status,
         location: formData.location.trim(),
-      };
-
-      onServerAdd(serverData);
+      });
       toast.success(`Server "${formData.name}" added successfully!`);
       handleClose();
-    } catch (err) {
-      setError('Failed to add server. Please try again.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to add server');
       setIsSubmitting(false);
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  const set = (field: string, value: string) => setFormData(prev => ({ ...prev, [field]: value }));
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -111,75 +79,32 @@ export function AddServerDialog({ open, onOpenChange, onServerAdd }: AddServerDi
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2">
               <Label htmlFor="server-name">Server Name *</Label>
-              <Input
-                id="server-name"
-                placeholder="e.g., Lab-Server-01"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                required
-              />
+              <Input id="server-name" placeholder="e.g., Lab-AMD-Server-01" value={formData.name} onChange={e => set('name', e.target.value)} required />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="cpu">CPU *</Label>
-              <Input
-                id="cpu"
-                placeholder="e.g., Intel Xeon E5-2690"
-                value={formData.cpu}
-                onChange={(e) => handleInputChange('cpu', e.target.value)}
-                required
-              />
+              <Input id="cpu" placeholder="e.g., AMD EPYC 7742 / Intel Xeon Gold 6338" value={formData.cpu} onChange={e => set('cpu', e.target.value)} required />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="memory">Memory *</Label>
-              <Input
-                id="memory"
-                placeholder="e.g., 64GB DDR4"
-                value={formData.memory}
-                onChange={(e) => handleInputChange('memory', e.target.value)}
-                required
-              />
+              <Input id="memory" placeholder="e.g., 128GB DDR4" value={formData.memory} onChange={e => set('memory', e.target.value)} required />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="storage">Storage *</Label>
-              <Input
-                id="storage"
-                placeholder="e.g., 1TB NVMe SSD"
-                value={formData.storage}
-                onChange={(e) => handleInputChange('storage', e.target.value)}
-                required
-              />
+              <Input id="storage" placeholder="e.g., 2TB NVMe SSD" value={formData.storage} onChange={e => set('storage', e.target.value)} required />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="gpu">GPU (Optional)</Label>
-              <Input
-                id="gpu"
-                placeholder="e.g., NVIDIA RTX 4090"
-                value={formData.gpu}
-                onChange={(e) => handleInputChange('gpu', e.target.value)}
-              />
+              <Input id="gpu" placeholder="e.g., NVIDIA A100 80GB" value={formData.gpu} onChange={e => set('gpu', e.target.value)} />
             </div>
-
             <div className="space-y-2 col-span-2">
               <Label htmlFor="location">Location *</Label>
-              <Input
-                id="location"
-                placeholder="e.g., Building A, Room 101"
-                value={formData.location}
-                onChange={(e) => handleInputChange('location', e.target.value)}
-                required
-              />
+              <Input id="location" placeholder="e.g., Building A, Room 101" value={formData.location} onChange={e => set('location', e.target.value)} required />
             </div>
-
             <div className="space-y-2 col-span-2">
               <Label htmlFor="status">Initial Status</Label>
-              <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={formData.status} onValueChange={v => set('status', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="available">Available</SelectItem>
                   <SelectItem value="maintenance">Maintenance</SelectItem>
@@ -197,12 +122,8 @@ export function AddServerDialog({ open, onOpenChange, onServerAdd }: AddServerDi
           )}
 
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Adding...' : 'Add Server'}
-            </Button>
+            <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Adding…' : 'Add Server'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

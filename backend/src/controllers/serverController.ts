@@ -69,7 +69,7 @@ export const getServerById = async (req: Request, res: Response, next: NextFunct
 
 export const createServer = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, specifications, location } = req.body;
+    const { name, specifications, location, status } = req.body;
 
     const server = await prisma.server.create({
       data: {
@@ -79,7 +79,7 @@ export const createServer = async (req: Request, res: Response, next: NextFuncti
         storageSpec: specifications.storage,
         gpuSpec: specifications.gpu,
         location,
-        status: 'available',
+        status: status || 'available',
       },
     });
 

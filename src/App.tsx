@@ -1,18 +1,26 @@
 import { useState } from 'react';
-import { User } from '@/lib/types';
 import { useServers, useBookings, useCurrentUser } from '@/hooks/use-booking-data';
 import { LoginForm } from '@/components/LoginForm';
 import { Navigation } from '@/components/Navigation';
 import { Dashboard } from '@/components/Dashboard';
 import { MyBookings } from '@/components/MyBookings';
 import { AdminPanel } from '@/components/AdminPanel';
+import { ServerList } from '@/components/ServerList';
 import { Toaster } from '@/components/ui/sonner';
 
 function App() {
-  const { currentUser, loginUser, logoutUser } = useCurrentUser();
+  const { currentUser, loading, loginUser, logoutUser } = useCurrentUser();
   const { servers, addServer, updateServer, deleteServer } = useServers();
   const { bookings, createBooking, extendBooking, cancelBooking } = useBookings();
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return <LoginForm onLogin={loginUser} />;
@@ -27,6 +35,15 @@ function App() {
             bookings={bookings || []}
             currentUser={currentUser}
             onBookingCreate={createBooking}
+          />
+        );
+      case 'servers':
+        return (
+          <ServerList
+            servers={servers || []}
+            onServerAdd={addServer}
+            onServerUpdate={updateServer}
+            onServerDelete={deleteServer}
           />
         );
       case 'bookings':
@@ -62,11 +79,9 @@ function App() {
         onTabChange={setActiveTab}
         onLogout={logoutUser}
       />
-      
       <main className="container mx-auto px-4 py-8">
         {renderContent()}
       </main>
-
       <Toaster />
     </div>
   );
