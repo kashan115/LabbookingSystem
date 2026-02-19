@@ -145,3 +145,18 @@ export const usersApi = {
   register: (name: string, email: string, password: string, isAdmin?: boolean) =>
     request<AdminUser>('/users/register', { method: 'POST', body: JSON.stringify({ name, email, password, isAdmin }) }),
 };
+
+// ── Admin (email / digest) ────────────────────────────────────────
+export interface EmailStatus {
+  configured: boolean;
+  smtpHost: string | null;
+  smtpUser: string | null;
+  smtpPort: string;
+  schedule: string;
+}
+
+export const adminApi = {
+  emailStatus: () => request<EmailStatus>('/admin/email-status'),
+  sendWeeklyDigest: () => request<{ sent: number; skipped: number; errors: number }>('/admin/send-weekly-digest', { method: 'POST' }),
+  sendTestEmail: () => request<{ message: string }>('/admin/send-test-email', { method: 'POST' }),
+};

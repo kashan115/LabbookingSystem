@@ -12,9 +12,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Database, Gear, Trash, Users, ShieldCheck, ShieldSlash, UserPlus } from '@phosphor-icons/react';
+import { Plus, Database, Gear, Trash, Users, ShieldCheck, ShieldSlash, UserPlus, Envelope, CheckCircle, Warning } from '@phosphor-icons/react';
 import { toast } from 'sonner';
-import { usersApi, type AdminUser } from '@/lib/api';
+import { usersApi, adminApi, type AdminUser, type EmailStatus } from '@/lib/api';
 
 interface AdminPanelProps {
   servers: Server[];
@@ -87,6 +87,38 @@ export function AdminPanel({ servers, bookings, onServerAdd, onServerUpdate, onS
   const [addUserOpen, setAddUserOpen] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const queryClient = useQueryClient();
+
+  // Email tab state
+  const [digestResult, setDigestResult] = useState<{sent:number;skipped:number;errors:number}|null>(null);
+  const [emailSending, setEmailSending] = useState(false);
+  const [testSending, setTestSending] = useState(false);
+
+  const { data: emailStatus, refetch: refetchEmailStatus } = useQuery<EmailStatus>({
+    queryKey: ['admin-email-status'],
+    queryFn: () => adminApi.emailStatus(),
+  });
+
+  const handleSendTestEmail = async () => {
+    setTestSending(true);
+    try {
+      const result = await adminApi.sendTestEmail();
+      toast.success(result.message);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send test email');
+    } finally { setTestSending(false); }
+  };
+
+  const handleSendDigest = async () => {
+    setEmailSending(true);
+    setDigestResult(null);
+    try {
+      const result = await adminApi.sendWeeklyDigest();
+      setDigestResult(result);
+      toast.success(`Digest sent: ${result.sent} emails delivered`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send digest');
+    } finally { setEmailSending(false); }
+  };
 
   // Users query
   const { data: users = [], isLoading: usersLoading } = useQuery<AdminUser[]>({
@@ -172,6 +204,7 @@ export function AdminPanel({ servers, bookings, onServerAdd, onServerUpdate, onS
           <TabsTrigger value="servers" className="flex items-center gap-2"><Gear size={14} />Servers</TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-2"><Users size={14} />Users</TabsTrigger>
           <TabsTrigger value="bookings">Recent Bookings</TabsTrigger>
+          <TabsTrigger value="email" className="flex items-center gap-2"><Envelope size={14} />Email</TabsTrigger>
         </TabsList>
 
         {/* ── Servers Tab ── */}
@@ -345,6 +378,104 @@ export function AdminPanel({ servers, bookings, onServerAdd, onServerUpdate, onS
           </Card>
         </TabsContent>
       </Tabs>
+
+
+        {/* ── Email Tab ── */}
+        <TabsContent value="email" className="space-y-4">
+          {/* Status card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                {emailStatus?.configured
+                  ? <CheckCircle size={18} className="text-green-500" />
+                  : <Warning size={18} className="text-yellow-500" />}
+                SMTP Configuration
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {emailStatus?.configured ? (
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="space-y-1">
+                    <p className="text-muted-foreground text-xs uppercase tracking-wide">SMTP Host</p>
+                    <p className="font-medium">{emailStatus.smtpHost}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-muted-foreground text-xs uppercase tracking-wide">Port</p>
+                    <p className="font-medium">{emailStatus.smtpPort}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-muted-foreground text-xs uppercase tracking-wide">Sender</p>
+                    <p className="font-medium">{emailStatus.smtpUser}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-muted-foreground text-xs uppercase tracking-wide">Schedule</p>
+                    <p className="font-medium">{emailStatus.schedule}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-4 text-sm space-y-2">
+                  <p className="font-semibold text-yellow-800">SMTP not configured</p>
+                  <p className="text-yellow-700">Add the following variables to your backend <code className="bg-yellow-100 px-1 rounded">.env</code> file:</p>
+                  <pre className="bg-yellow-100 rounded p-3 text-xs overflow-auto text-yellow-900">{`SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=you@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=Lab Booking <you@gmail.com>`}</pre>
+                  <p className="text-yellow-700 text-xs">For Gmail, use an <strong>App Password</strong> (not your regular password). For Outlook use <code>smtp.office365.com</code>.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Actions card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Email Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 border rounded-lg p-4 space-y-2">
+                  <h4 className="font-semibold text-sm">Send Test Email</h4>
+                  <p className="text-xs text-muted-foreground">Sends a single test email to your admin account to verify SMTP is working.</p>
+                  <Button size="sm" variant="outline" onClick={handleSendTestEmail} disabled={testSending || !emailStatus?.configured}>
+                    {testSending ? 'Sending…' : 'Send Test Email'}
+                  </Button>
+                </div>
+                <div className="flex-1 border rounded-lg p-4 space-y-2">
+                  <h4 className="font-semibold text-sm">Send Weekly Digest Now</h4>
+                  <p className="text-xs text-muted-foreground">Immediately send the weekly digest to all users. Normally runs every Monday at 08:00 UTC.</p>
+                  <Button size="sm" onClick={handleSendDigest} disabled={emailSending || !emailStatus?.configured}>
+                    {emailSending ? 'Sending…' : 'Send Digest to All Users'}
+                  </Button>
+                </div>
+              </div>
+
+              {digestResult && (
+                <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-sm">
+                  <p className="font-semibold text-green-800 mb-2">Digest Complete</p>
+                  <div className="flex gap-6 text-green-700">
+                    <span>✅ Sent: <strong>{digestResult.sent}</strong></span>
+                    <span>⏭ Skipped: <strong>{digestResult.skipped}</strong></span>
+                    <span>❌ Errors: <strong>{digestResult.errors}</strong></span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* What's included card */}
+          <Card>
+            <CardHeader><CardTitle className="text-base">What's in the Weekly Email?</CardTitle></CardHeader>
+            <CardContent>
+              <ul className="text-sm text-muted-foreground space-y-2">
+                <li>📋 <strong>Active bookings summary</strong> — server name, purpose, days remaining</li>
+                <li>⚠ <strong>Expiry alerts</strong> — highlighted when a booking expires within 7 days</li>
+                <li>🖥 <strong>Available servers count</strong> — shows how many servers are free to book</li>
+                <li>🔗 <strong>Direct link</strong> to the booking portal</li>
+              </ul>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
       <AddServerDialog open={addServerOpen} onOpenChange={setAddServerOpen} onServerAdd={onServerAdd} />
       <AddUserDialog open={addUserOpen} onOpenChange={setAddUserOpen} onCreated={() => queryClient.invalidateQueries({ queryKey: ['admin-users'] })} />

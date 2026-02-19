@@ -9,6 +9,8 @@ import { errorHandler } from './middleware/errorHandler';
 import serverRoutes from './routes/serverRoutes';
 import bookingRoutes from './routes/bookingRoutes';
 import userRoutes from './routes/userRoutes';
+import adminRoutes from './routes/adminRoutes';
+import { startScheduler } from './services/scheduler';
 
 dotenv.config();
 
@@ -63,6 +65,7 @@ app.get('/ready', async (_req, res) => {
 app.use('/api/users', userRoutes);
 app.use('/api/servers', serverRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404
 app.use('*', (_req, res) => res.status(404).json({ status: 'error', message: 'Route not found' }));
@@ -83,6 +86,7 @@ const start = async () => {
   try {
     await prisma.$connect();
     logger.info('PostgreSQL connected');
+    startScheduler();
     app.listen(PORT, () => {
       logger.info(`API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
     });
