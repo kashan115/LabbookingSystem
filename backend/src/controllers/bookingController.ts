@@ -22,7 +22,7 @@ export const getAllBookings = async (req: Request, res: Response, next: NextFunc
 
 export const getBookingsByUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { userId } = req.params;
+    const userId = req.params.userId as string;
 
     const bookings = await prisma.booking.findMany({
       where: { userId },
@@ -110,7 +110,7 @@ export const createBooking = async (req: Request, res: Response, next: NextFunct
 
 export const extendBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { newEndDate } = req.body;
 
     const booking = await prisma.booking.findUnique({
@@ -148,7 +148,7 @@ export const extendBooking = async (req: Request, res: Response, next: NextFunct
 
 export const cancelBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const booking = await prisma.booking.update({
       where: { id },

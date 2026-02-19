@@ -91,7 +91,7 @@ export const getMe = async (req: AuthRequest, res: Response, next: NextFunction)
 
 export const getUserById = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const user = await prisma.user.findUnique({
       where: { id },
       select: {

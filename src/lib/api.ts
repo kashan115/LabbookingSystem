@@ -6,18 +6,37 @@ function getToken(): string | null {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
 
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
-  return json.data ?? json;
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch {
+    throw new Error('Cannot reach the server. Make sure the backend is running.');
+  }
+
+  // Parse JSON safely — response body may be empty
+  let json: Record<string, unknown> = {};
+  const text = await res.text();
+  if (text) {
+    try {
+      json = JSON.parse(text);
+    } catch {
+      throw new Error(`Server returned invalid response (HTTP ${res.status})`);
+    }
+  }
+
+  if (!res.ok) {
+    throw new Error((json.message as string) || `HTTP ${res.status}`);
+  }
+
+  return (json.data ?? json) as T;
 }
 
 // ── Auth ──────────────────────────────────────────────────────────

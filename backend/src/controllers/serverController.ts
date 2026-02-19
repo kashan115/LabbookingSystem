@@ -43,7 +43,7 @@ export const getAllServers = async (req: Request, res: Response, next: NextFunct
 
 export const getServerById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const server = await prisma.server.findUnique({
       where: { id },
       include: {
@@ -91,7 +91,7 @@ export const createServer = async (req: Request, res: Response, next: NextFuncti
 
 export const updateServer = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { name, specifications, status, location } = req.body;
 
     const server = await prisma.server.update({
@@ -115,7 +115,7 @@ export const updateServer = async (req: Request, res: Response, next: NextFuncti
 
 export const deleteServer = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     await prisma.server.delete({
       where: { id },
