@@ -1,7 +1,7 @@
 import { AppUser } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Database, Calendar, Gear, Desktop, SignOut, UserCircle } from '@phosphor-icons/react';
+import { Database, Calendar, Gear, Desktop, SignOut, UserCircle, Users } from '@phosphor-icons/react';
 
 interface NavigationProps {
   currentUser: AppUser;
@@ -15,7 +15,10 @@ export function Navigation({ currentUser, activeTab, onTabChange, onLogout }: Na
     { id: 'dashboard', label: 'Dashboard',    icon: Database },
     { id: 'servers',   label: 'Servers',       icon: Desktop  },
     { id: 'bookings',  label: 'My Bookings',   icon: Calendar },
-    ...(currentUser.isAdmin ? [{ id: 'admin', label: 'Admin', icon: Gear }] : []),
+    ...(currentUser.isAdmin ? [
+      { id: 'users',  label: 'Users',  icon: Users },
+      { id: 'admin',  label: 'Admin',  icon: Gear  },
+    ] : []),
   ];
 
   return (

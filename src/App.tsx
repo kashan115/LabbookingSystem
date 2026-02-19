@@ -6,6 +6,7 @@ import { Dashboard } from '@/components/Dashboard';
 import { MyBookings } from '@/components/MyBookings';
 import { AdminPanel } from '@/components/AdminPanel';
 import { ServerList } from '@/components/ServerList';
+import { UserManagement } from '@/components/UserManagement';
 import { Toaster } from '@/components/ui/sonner';
 
 function App() {
@@ -55,6 +56,9 @@ function App() {
             onCancelBooking={cancelBooking}
           />
         );
+      case 'users':
+        if (!currentUser.isAdmin) return null;
+        return <UserManagement />;
       case 'admin':
         if (!currentUser.isAdmin) return null;
         return (
