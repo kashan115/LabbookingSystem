@@ -7,6 +7,8 @@ import { MyBookings } from '@/components/MyBookings';
 import { AdminPanel } from '@/components/AdminPanel';
 import { ServerList } from '@/components/ServerList';
 import { UserManagement } from '@/components/UserManagement';
+import { Communications } from '@/components/Communications';
+import { Reports } from '@/components/Reports';
 import { Toaster } from '@/components/ui/sonner';
 
 function App() {
@@ -38,6 +40,10 @@ function App() {
             onBookingCreate={createBooking}
           />
         );
+      case 'communications':
+        return <Communications />;
+      case 'reports':
+        return <Reports />;
       case 'servers':
         return (
           <ServerList
