@@ -1,290 +1,375 @@
-# 🧪 Lab Server Booking System
+# Lab Booking System
 
-A professional, containerized web application for managing lab server bookings with automated notifications and administrative controls.
-
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)
-![Node](https://img.shields.io/badge/node-20.x-green.svg)
-![MySQL](https://img.shields.io/badge/mysql-8.0-blue.svg)
+A production-grade web application for booking laboratory servers.  
+**Stack**: React 19 · TypeScript · Vite · Node.js · Express · Prisma · PostgreSQL · Docker · Azure
 
 ---
 
-## ✨ Features
+## Architecture
 
-- 🖥️ **Server Management** - Track 20+ lab servers with real-time availability
-- 📅 **Smart Booking** - Prevent double-bookings with date conflict detection
-- 🔔 **Renewal Notifications** - Automatic alerts for bookings exceeding 15 days
-- 👥 **User Management** - Role-based access (Users & Admins)
-- 📊 **Dashboard** - Visual overview of all servers and bookings
-- 🔒 **Secure Authentication** - Password hashing with bcrypt
-- 🐳 **Fully Containerized** - Docker-ready for easy deployment
-- 🗄️ **MySQL Database** - Persistent data storage with Prisma ORM
+```
+Browser
+  ↓ (port 80)
+Nginx (frontend container)
+  ├── /           → serves React SPA
+  └── /api/*      → proxy to backend container (port 3001)
+                            ↓
+                   Express API (backend container)
+                            ↓
+                   PostgreSQL (Azure Flexible Server / local container)
+```
 
 ---
 
-## 🚀 Quick Start
+## Quick Start — Docker Compose (local)
 
-### Using Docker (Recommended)
+### Prerequisites
+- Docker Desktop 4.x+
+- Docker Compose v2
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/kkkashan/lab-reservation-syst.git
+# 1. Clone the repo
+git clone https://github.com/kkkashan/lab-reservation-syst
 cd lab-reservation-syst
 
-# 2. Start all services
-docker-compose up -d --build
+# 2. Create your .env (never commit this)
+cp .env.example .env
+# Edit .env — change DB_PASSWORD and JWT_SECRET!
 
-# 3. Access the application
-# Frontend: http://localhost:80
-# Backend: http://localhost:3000
+# 3. Start everything (database + backend + frontend)
+docker compose up --build -d
+
+# 4. View logs
+docker compose logs -f
+
+# 5. Open the app
+open http://localhost
 ```
 
-**Default Admin Login:**
-- Email: `admin@lab-booking.com`
-- Password: `admin123`
+**Default admin credentials**  
+Email: `admin@lab-booking.com`  
+Password: `password`  
+⚠️ Change these immediately in production.
 
 ---
 
-## 🏗️ Tech Stack
-
-### Frontend
-- React 18 + TypeScript
-- Vite (Build Tool)
-- TailwindCSS + Radix UI
-- React Query (State Management)
-- GitHub Spark UI Components
-
-### Backend
-- Node.js + Express + TypeScript
-- Prisma ORM
-- JWT Authentication
-- Winston (Logging)
-- Express Rate Limiting
-- Helmet (Security)
-
-### Database
-- MySQL 8.0
-- Prisma Migrations
-
-### DevOps
-- Docker & Docker Compose
-- Multi-stage builds
-- Health checks
-- Volume persistence
-
----
-
-## 📁 Project Structure
-
-```
-lab-reservation-syst/
-├── backend/                 # Backend API
-│   ├── src/
-│   │   ├── controllers/    # API controllers
-│   │   ├── routes/         # Express routes
-│   │   ├── middleware/     # Custom middleware
-│   │   ├── config/         # Configuration files
-│   │   └── server.ts       # Express server
-│   ├── prisma/             # Database schema & migrations
-│   ├── Dockerfile          # Backend container
-│   └── package.json
-├── src/                     # Frontend source
-│   ├── components/         # React components
-│   ├── hooks/              # Custom hooks
-│   ├── lib/                # Utilities & types
-│   └── main.tsx            # Entry point
-├── docker-compose.yml      # Orchestration
-├── Dockerfile              # Frontend container
-├── nginx.conf              # Web server config
-└── DEPLOYMENT.md           # Detailed deployment guide
-```
-
----
-
-## 🔧 Development Setup
+## Local Development (without Docker)
 
 ### Prerequisites
 - Node.js 20+
-- MySQL 8.0
-- Docker (optional)
+- PostgreSQL 16 running locally (or `docker compose up database -d`)
 
-### Local Development
-
-#### Backend
 ```bash
-cd backend
+# Install frontend deps
 npm install
-cp .env.example .env
-# Update DATABASE_URL in .env
-npm run dev
-```
 
-#### Frontend
-```bash
-npm install
-npm run dev
-```
+# Install backend deps
+cd backend && npm install && cd ..
 
----
+# Start PostgreSQL (Docker shortcut)
+docker compose up database -d
 
-## 📖 Documentation
-
-- **[Deployment Guide](DEPLOYMENT.md)** - Comprehensive deployment instructions
-- **[API Documentation](#-api-endpoints)** - REST API reference
-- **[PRD](PRD.md)** - Product Requirements Document
-
----
-
-## 🔌 API Endpoints
-
-### Authentication
-- `POST /api/users/register` - Register new user
-- `POST /api/users/login` - Login
-
-### Servers
-- `GET /api/servers` - List all servers
-- `POST /api/servers` - Create server (Admin only)
-- `PUT /api/servers/:id` - Update server (Admin only)
-- `DELETE /api/servers/:id` - Delete server (Admin only)
-
-### Bookings
-- `GET /api/bookings` - List all bookings
-- `POST /api/bookings` - Create new booking
-- `PUT /api/bookings/:id/extend` - Extend booking
-- `PUT /api/bookings/:id/cancel` - Cancel booking
-
----
-
-## 🐳 Docker Commands
-
-```bash
-# Start services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-
-# Rebuild after changes
-docker-compose up -d --build
-
-# Remove all (including data)
-docker-compose down -v
-```
-
----
-
-## 🗄️ Database
-
-### Schema
-- **Users** - Authentication & authorization
-- **Servers** - Lab server inventory
-- **Bookings** - Reservation records with relationships
-
-### Migrations
-```bash
+# Run migrations + seed
 cd backend
-npx prisma migrate dev      # Development
-npx prisma migrate deploy   # Production
-npx prisma studio          # Visual database editor
+npx prisma migrate deploy
+cd ..
+
+# Start backend (terminal 1)
+cd backend && npm run dev
+
+# Start frontend (terminal 2)
+npm run dev
+# → http://localhost:5173
 ```
 
 ---
 
-## 🔐 Security Features
+## Deploy on Azure — Step-by-Step
 
-- ✅ Password hashing (bcrypt)
-- ✅ Rate limiting on API endpoints
-- ✅ Helmet security headers
-- ✅ CORS configuration
-- ✅ SQL injection prevention (Prisma)
-- ✅ Input validation
-- ✅ Environment variable protection
+### Prerequisites
+- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) (`az`)
+- Docker
+- An Azure subscription
 
 ---
 
-## 📊 Monitoring
+### Step 1 — Log in & create resource group
 
-### Health Checks
-- Frontend: `http://localhost:80/health`
-- Backend: `http://localhost:3000/health`
-- Database: Docker health check enabled
+```bash
+az login
 
-### Logging
-- Winston logger with timestamps
-- Separate error and info logs
-- Container logs via Docker
+# Set your values
+RG=lab-booking-rg
+LOCATION=eastus
+ACR_NAME=labbookingacr      # must be globally unique, lowercase, no hyphens
 
----
-
-## 🚢 Deployment Options
-
-### Cloud Platforms
-- **AWS**: ECS, EKS, Elastic Beanstalk
-- **Azure**: Container Instances, AKS
-- **GCP**: Cloud Run, GKE
-- **DigitalOcean**: App Platform
-- **Heroku**: Container Registry
-
-### Self-Hosted
-- Docker Swarm
-- Kubernetes
-- Traditional VPS with Docker
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
-
----
-
-## 📝 Environment Variables
-
-```env
-# Database
-DB_NAME=lab_booking
-DB_USER=labuser
-DB_PASSWORD=your-password
-DB_PORT=3306
-
-# Backend
-BACKEND_PORT=3000
-NODE_ENV=production
-
-# Frontend
-FRONTEND_PORT=80
+az group create --name $RG --location $LOCATION
 ```
 
 ---
 
-## 🤝 Contributing
+### Step 2 — Create Azure Container Registry (ACR)
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit changes
-4. Push to the branch
-5. Open a Pull Request
+```bash
+az acr create \
+  --resource-group $RG \
+  --name $ACR_NAME \
+  --sku Basic \
+  --admin-enabled true
 
----
+# Get credentials
+ACR_SERVER=$(az acr show --name $ACR_NAME --query loginServer -o tsv)
+ACR_USER=$(az acr credential show --name $ACR_NAME --query username -o tsv)
+ACR_PASS=$(az acr credential show --name $ACR_NAME --query "passwords[0].value" -o tsv)
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 👥 Author
-
-**Kashan J**
-- GitHub: [@kkkashan](https://github.com/kkkashan)
+echo "Registry: $ACR_SERVER"
+```
 
 ---
 
-## 🙏 Acknowledgments
+### Step 3 — Create Azure Database for PostgreSQL (Flexible Server)
 
-- Built with [GitHub Spark](https://github.com/githubnext/spark)
-- UI Components from [Radix UI](https://www.radix-ui.com/)
-- Icons from [Heroicons](https://heroicons.com/)
+```bash
+DB_SERVER=lab-booking-pg        # globally unique
+DB_ADMIN=labadmin
+DB_PASS=StrongP@ssw0rd123!      # must meet Azure complexity rules
+
+az postgres flexible-server create \
+  --resource-group $RG \
+  --name $DB_SERVER \
+  --location $LOCATION \
+  --admin-user $DB_ADMIN \
+  --admin-password "$DB_PASS" \
+  --sku-name Standard_B1ms \
+  --tier Burstable \
+  --version 16 \
+  --storage-size 32 \
+  --database-name lab_booking \
+  --public-access 0.0.0.0    # allow Azure services; restrict further in prod
+
+DATABASE_URL="postgresql://${DB_ADMIN}:${DB_PASS}@${DB_SERVER}.postgres.database.azure.com:5432/lab_booking?sslmode=require"
+echo "DATABASE_URL: $DATABASE_URL"
+```
 
 ---
 
-**⭐ If you find this project useful, please give it a star!**
+### Step 4 — Build and push Docker images
+
+```bash
+# Log in to ACR
+docker login $ACR_SERVER -u $ACR_USER -p $ACR_PASS
+
+# Build and push backend
+docker build -t $ACR_SERVER/lab-booking-backend:latest ./backend
+docker push $ACR_SERVER/lab-booking-backend:latest
+
+# Build and push frontend
+docker build -t $ACR_SERVER/lab-booking-frontend:latest .
+docker push $ACR_SERVER/lab-booking-frontend:latest
+```
+
+---
+
+### Step 5 — Create Container Apps Environment
+
+```bash
+az containerapp env create \
+  --name lab-booking-env \
+  --resource-group $RG \
+  --location $LOCATION
+```
+
+---
+
+### Step 6 — Deploy backend Container App
+
+```bash
+JWT_SECRET=$(openssl rand -base64 48)
+FRONTEND_URL=https://lab-booking-frontend.<unique-id>.${LOCATION}.azurecontainerapps.io
+
+az containerapp create \
+  --name lab-booking-backend \
+  --resource-group $RG \
+  --environment lab-booking-env \
+  --image $ACR_SERVER/lab-booking-backend:latest \
+  --registry-server $ACR_SERVER \
+  --registry-username $ACR_USER \
+  --registry-password $ACR_PASS \
+  --target-port 3001 \
+  --ingress internal \
+  --min-replicas 1 \
+  --max-replicas 3 \
+  --cpu 0.5 --memory 1.0Gi \
+  --env-vars \
+    NODE_ENV=production \
+    PORT=3001 \
+    DATABASE_URL="$DATABASE_URL" \
+    JWT_SECRET="$JWT_SECRET" \
+    FRONTEND_URL="$FRONTEND_URL" \
+    LOG_LEVEL=info
+
+# Get the backend's internal FQDN
+BACKEND_FQDN=$(az containerapp show \
+  --name lab-booking-backend \
+  --resource-group $RG \
+  --query "properties.configuration.ingress.fqdn" -o tsv)
+echo "Backend FQDN: $BACKEND_FQDN"
+```
+
+---
+
+### Step 7 — Deploy frontend Container App
+
+The frontend Nginx proxies `/api/` to `http://backend:3001`. In Container Apps the service name resolves via environment DNS — add the backend as a service binding or update the proxy target to the internal FQDN.
+
+```bash
+az containerapp create \
+  --name lab-booking-frontend \
+  --resource-group $RG \
+  --environment lab-booking-env \
+  --image $ACR_SERVER/lab-booking-frontend:latest \
+  --registry-server $ACR_SERVER \
+  --registry-username $ACR_USER \
+  --registry-password $ACR_PASS \
+  --target-port 80 \
+  --ingress external \
+  --min-replicas 1 \
+  --max-replicas 3 \
+  --cpu 0.25 --memory 0.5Gi
+
+# Get the public URL
+az containerapp show \
+  --name lab-booking-frontend \
+  --resource-group $RG \
+  --query "properties.configuration.ingress.fqdn" -o tsv
+```
+
+---
+
+### Step 8 — Update CORS on backend
+
+```bash
+az containerapp update \
+  --name lab-booking-backend \
+  --resource-group $RG \
+  --set-env-vars FRONTEND_URL="https://<your-frontend-fqdn>"
+```
+
+---
+
+### Step 9 — Set up CI/CD with GitHub Actions
+
+Add these **GitHub repository secrets** (Settings → Secrets → Actions):
+
+| Secret | Value |
+|--------|-------|
+| `ACR_REGISTRY` | `labbookingacr.azurecr.io` |
+| `ACR_USERNAME` | ACR admin username |
+| `ACR_PASSWORD` | ACR admin password |
+| `AZURE_RG` | `lab-booking-rg` |
+| `AZURE_CREDENTIALS` | Output of `az ad sp create-for-rbac` (see below) |
+
+```bash
+# Create a service principal for GitHub Actions
+az ad sp create-for-rbac \
+  --name lab-booking-github-sp \
+  --role contributor \
+  --scopes /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/$RG \
+  --sdk-auth
+# Copy the full JSON output → paste as AZURE_CREDENTIALS secret
+```
+
+After setting secrets, every push to `main` automatically builds, pushes, and deploys both containers.
+
+---
+
+## Environment Variables Reference
+
+### Root `.env` (Docker Compose)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_NAME` | `lab_booking` | PostgreSQL database name |
+| `DB_USER` | `labuser` | PostgreSQL user |
+| `DB_PASSWORD` | _(required)_ | PostgreSQL password |
+| `DB_PORT` | `5432` | Host port for DB |
+| `JWT_SECRET` | _(required)_ | Min 32-char random string |
+| `BACKEND_PORT` | `3001` | Host port for API |
+| `FRONTEND_PORT` | `80` | Host port for UI |
+
+### Backend container environment
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | Full PostgreSQL connection string |
+| `JWT_SECRET` | Same as above |
+| `FRONTEND_URL` | Allowed CORS origin(s), comma-separated |
+| `PORT` | Backend listen port (default `3001`) |
+| `NODE_ENV` | `production` or `development` |
+| `LOG_LEVEL` | `info`, `debug`, `warn`, `error` |
+
+---
+
+## Security Checklist (before production)
+
+- [ ] Change default admin password (`admin@lab-booking.com` / `password`)
+- [ ] Set `JWT_SECRET` to a random 48-byte base64 string
+- [ ] Set `DB_PASSWORD` to a strong password (never `labpassword`)
+- [ ] Restrict PostgreSQL public access to backend IP only
+- [ ] Enable HTTPS (Azure Container Apps provides TLS by default on external ingress)
+- [ ] Set `NODE_ENV=production` on all containers
+- [ ] Review `FRONTEND_URL` CORS — do not use `*`
+- [ ] Enable Azure Defender for Containers
+
+---
+
+## Useful Commands
+
+```bash
+# View real-time backend logs on Azure
+az containerapp logs show \
+  --name lab-booking-backend \
+  --resource-group lab-booking-rg \
+  --follow
+
+# Scale backend to zero (cost saving during off-hours)
+az containerapp update \
+  --name lab-booking-backend \
+  --resource-group lab-booking-rg \
+  --min-replicas 0
+
+# List all container apps
+az containerapp list --resource-group lab-booking-rg -o table
+
+# Tear down everything
+az group delete --name lab-booking-rg --yes --no-wait
+```
+
+---
+
+## Project Structure
+
+```
+lab-reservation-syst/
+├── src/                        # React frontend
+│   ├── components/             # UI components
+│   ├── hooks/use-booking-data.ts  # TanStack Query hooks
+│   ├── lib/
+│   │   ├── api.ts              # Typed fetch client
+│   │   └── types.ts            # Shared types
+│   └── main.tsx
+├── backend/
+│   ├── src/
+│   │   ├── controllers/        # Route handlers
+│   │   ├── middleware/auth.ts  # JWT + DB session auth
+│   │   ├── routes/             # Express routers
+│   │   └── server.ts           # App entry point
+│   ├── prisma/
+│   │   ├── schema.prisma       # Data model (PostgreSQL)
+│   │   └── migrations/         # SQL migration history
+│   └── Dockerfile
+├── Dockerfile                  # Frontend Nginx image
+├── nginx.conf                  # Nginx config (SPA + API proxy)
+├── docker-compose.yml          # Local full-stack
+├── .env.example                # Environment template
+└── .github/workflows/
+    └── azure-deploy.yml        # CI/CD pipeline
+```

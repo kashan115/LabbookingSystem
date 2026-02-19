@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -13,28 +13,44 @@ model User {
   email     String    @unique
   password  String
   isAdmin   Boolean   @default(false)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt     @map("updated_at")
   bookings  Booking[]
+  sessions  Session[]
 
   @@index([email])
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("sessions")
 }
 
 model Server {
-  id            String    @id @default(uuid())
-  name          String    @unique
-  cpuSpec       String    @map("cpu_spec")
-  memorySpec    String    @map("memory_spec")
-  storageSpec   String    @map("storage_spec")
-  gpuSpec       String?   @map("gpu_spec")
-  status        ServerStatus @default(available)
-  location      String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  bookings      Booking[]
+  id          String       @id @default(uuid())
+  name        String       @unique
+  cpuSpec     String       @map("cpu_spec")
+  memorySpec  String       @map("memory_spec")
+  storageSpec String       @map("storage_spec")
+  gpuSpec     String?      @map("gpu_spec")
+  status      ServerStatus @default(available)
+  location    String
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt      @map("updated_at")
+  bookings    Booking[]
 
   @@index([status])
   @@index([name])
+  @@map("servers")
 }
 
 model Booking {
@@ -43,12 +59,12 @@ model Booking {
   userId                  String        @map("user_id")
   startDate               DateTime      @map("start_date")
   endDate                 DateTime      @map("end_date")
-  purpose                 String        @db.Text
+  purpose                 String
   status                  BookingStatus @default(active)
   renewalNotificationSent Boolean       @default(false) @map("renewal_notification_sent")
   daysBooked              Int           @map("days_booked")
   createdAt               DateTime      @default(now()) @map("created_at")
-  updatedAt               DateTime      @updatedAt @map("updated_at")
+  updatedAt               DateTime      @updatedAt      @map("updated_at")
 
   server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -57,6 +73,7 @@ model Booking {
   @@index([userId])
   @@index([status])
   @@index([startDate, endDate])
+  @@map("bookings")
 }
 
 enum ServerStatus {

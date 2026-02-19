@@ -6,7 +6,6 @@ import dotenv from 'dotenv';
 import prisma from './config/database';
 import logger from './config/logger';
 import { errorHandler } from './middleware/errorHandler';
-
 import serverRoutes from './routes/serverRoutes';
 import bookingRoutes from './routes/bookingRoutes';
 import userRoutes from './routes/userRoutes';
@@ -14,72 +13,83 @@ import userRoutes from './routes/userRoutes';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
-// Security middleware
-app.use(helmet());
+// Trust Azure's reverse proxy
+app.set('trust proxy', 1);
+
+// Security
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+
+const allowedOrigins = (process.env.FRONTEND_URL || '*').split(',').map(s => s.trim());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`CORS blocked: ${origin}`));
+    }
+  },
   credentials: true,
 }));
 
 // Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
-});
-app.use('/api', limiter);
+app.use('/api', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { status: 'error', message: 'Too many requests, please try again later.' },
+}));
 
-// Body parsing middleware
-app.use(express.json());
+app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+// Health / readiness endpoints (Azure App Service probes)
+app.get('/health', (_req, res) => res.json({ status: 'healthy', uptime: process.uptime(), timestamp: new Date().toISOString() }));
+app.get('/ready', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ready', database: 'connected' });
+  } catch {
+    res.status(503).json({ status: 'not ready', database: 'disconnected' });
+  }
 });
 
 // API routes
+app.use('/api/users', userRoutes);
 app.use('/api/servers', serverRoutes);
 app.use('/api/bookings', bookingRoutes);
-app.use('/api/users', userRoutes);
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    status: 'error',
-    message: 'Route not found',
-  });
-});
+// 404
+app.use('*', (_req, res) => res.status(404).json({ status: 'error', message: 'Route not found' }));
 
-// Error handling middleware
+// Error handler (must be last)
 app.use(errorHandler);
 
 // Graceful shutdown
-const gracefulShutdown = async () => {
-  logger.info('Shutting down gracefully...');
+const shutdown = async (signal: string) => {
+  logger.info(`Received ${signal}. Shutting down gracefully...`);
   await prisma.$disconnect();
   process.exit(0);
 };
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
-
-// Start server
-const startServer = async () => {
+const start = async () => {
   try {
     await prisma.$connect();
-    logger.info('Database connected successfully');
-
+    logger.info('PostgreSQL connected');
     app.listen(PORT, () => {
-      logger.info(`Server running on port ${PORT}`);
-      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
     });
-  } catch (error) {
-    logger.error('Failed to start server:', error);
+  } catch (err) {
+    logger.error('Failed to start:', err);
     process.exit(1);
   }
 };
 
-startServer();
+start();
