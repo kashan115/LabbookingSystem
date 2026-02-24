@@ -3,6 +3,7 @@ import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { runWeeklyDigest } from '../services/scheduler';
 import { sendTestEmail, isEmailConfigured } from '../services/emailService';
 import { AppError } from '../middleware/errorHandler';
+import { EMAIL_DIGEST_SCHEDULE_DESC } from '../config/constants';
 
 const router = Router();
 
@@ -12,10 +13,7 @@ router.get('/email-status', authenticate, requireAdmin, (_req: AuthRequest, res:
     status: 'success',
     data: {
       configured: isEmailConfigured(),
-      smtpHost: process.env.SMTP_HOST || null,
-      smtpUser: process.env.SMTP_USER || null,
-      smtpPort: process.env.SMTP_PORT || '587',
-      schedule: 'Every Monday at 08:00 UTC',
+      schedule: EMAIL_DIGEST_SCHEDULE_DESC,
     },
   });
 });

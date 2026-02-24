@@ -2,8 +2,7 @@ import cron from 'node-cron';
 import prisma from '../config/database';
 import { sendWeeklyDigest, isEmailConfigured } from './emailService';
 import logger from '../config/logger';
-
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
+import { MS_PER_DAY, EMAIL_DIGEST_CRON } from '../config/constants';
 
 function daysRemaining(endDate: Date): number {
   return Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / MS_PER_DAY));
@@ -78,8 +77,8 @@ export function startScheduler(): void {
     return;
   }
 
-  // "0 8 * * 1" = 08:00 every Monday
-  cron.schedule('0 8 * * 1', async () => {
+  // EMAIL_DIGEST_CRON = 08:00 every Monday
+  cron.schedule(EMAIL_DIGEST_CRON, async () => {
     logger.info('Cron triggered: weekly digest');
     try {
       await runWeeklyDigest();

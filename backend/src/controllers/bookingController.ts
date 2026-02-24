@@ -1,8 +1,10 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import prisma from '../config/database';
 import { AppError } from '../middleware/errorHandler';
+import { AuthRequest } from '../middleware/auth';
+import { MS_PER_DAY } from '../config/constants';
 
-export const getAllBookings = async (req: Request, res: Response, next: NextFunction) => {
+export const getAllBookings = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const bookings = await prisma.booking.findMany({
       include: {
@@ -20,9 +22,14 @@ export const getAllBookings = async (req: Request, res: Response, next: NextFunc
   }
 };
 
-export const getBookingsByUser = async (req: Request, res: Response, next: NextFunction) => {
+export const getBookingsByUser = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.params.userId as string;
+
+    // Authorization check: users can only view their own bookings unless they're admin
+    if (userId !== req.user?.id && !req.user?.isAdmin) {
+      throw new AppError(403, 'You can only view your own bookings');
+    }
 
     const bookings = await prisma.booking.findMany({
       where: { userId },
@@ -38,7 +45,7 @@ export const getBookingsByUser = async (req: Request, res: Response, next: NextF
   }
 };
 
-export const createBooking = async (req: Request, res: Response, next: NextFunction) => {
+export const createBooking = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { serverId, userId, startDate, endDate, purpose } = req.body;
 
@@ -76,7 +83,7 @@ export const createBooking = async (req: Request, res: Response, next: NextFunct
 
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const daysBooked = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    const daysBooked = Math.ceil((end.getTime() - start.getTime()) / MS_PER_DAY);
 
     const booking = await prisma.booking.create({
       data: {
@@ -108,7 +115,7 @@ export const createBooking = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-export const extendBooking = async (req: Request, res: Response, next: NextFunction) => {
+export const extendBooking = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const { newEndDate } = req.body;
@@ -122,7 +129,7 @@ export const extendBooking = async (req: Request, res: Response, next: NextFunct
     }
 
     const newEnd = new Date(newEndDate);
-    const daysBooked = Math.ceil((newEnd.getTime() - new Date(booking.startDate).getTime()) / (1000 * 60 * 60 * 24));
+    const daysBooked = Math.ceil((newEnd.getTime() - new Date(booking.startDate).getTime()) / MS_PER_DAY);
 
     const updatedBooking = await prisma.booking.update({
       where: { id },
@@ -146,7 +153,7 @@ export const extendBooking = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-export const cancelBooking = async (req: Request, res: Response, next: NextFunction) => {
+export const cancelBooking = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
 

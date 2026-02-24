@@ -11,8 +11,30 @@ import bookingRoutes from './routes/bookingRoutes';
 import userRoutes from './routes/userRoutes';
 import adminRoutes from './routes/adminRoutes';
 import { startScheduler } from './services/scheduler';
+import { JWT_MIN_LENGTH, RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_REQUESTS, REQUEST_BODY_LIMIT } from './config/constants';
 
 dotenv.config();
+
+// Validate required environment variables at startup
+function validateEnv() {
+  const required = ['DATABASE_URL', 'JWT_SECRET'];
+  const missing = required.filter(key => !process.env[key]);
+
+  if (missing.length > 0) {
+    logger.error(`Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+
+  // Validate JWT_SECRET strength
+  if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < JWT_MIN_LENGTH) {
+    logger.error(`JWT_SECRET must be at least ${JWT_MIN_LENGTH} characters long`);
+    process.exit(1);
+  }
+
+  logger.info('Environment variables validated successfully');
+}
+
+validateEnv();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -40,14 +62,14 @@ app.use(cors({
 
 // Rate limiting
 app.use('/api', rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_MAX_REQUESTS,
   standardHeaders: true,
   legacyHeaders: false,
   message: { status: 'error', message: 'Too many requests, please try again later.' },
 }));
 
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
 app.use(express.urlencoded({ extended: true }));
 
 // Health / readiness endpoints (Azure App Service probes)

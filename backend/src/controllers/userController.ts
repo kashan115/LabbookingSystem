@@ -4,18 +4,22 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { AppError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
-
-const TOKEN_EXPIRY_DAYS = 7;
+import { BCRYPT_ROUNDS, TOKEN_EXPIRY_DAYS, PASSWORD_REGEX, PASSWORD_REQUIREMENTS } from '../config/constants';
 
 export const registerUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { name, email, password, isAdmin } = req.body;
     if (!name || !email || !password) throw new AppError(400, 'name, email and password are required');
 
+    // Validate password strength
+    if (!PASSWORD_REGEX.test(password)) {
+      throw new AppError(400, PASSWORD_REQUIREMENTS);
+    }
+
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) throw new AppError(409, 'User already exists with this email');
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
     const user = await prisma.user.create({
       data: { name, email, password: hashedPassword, isAdmin: isAdmin || false },
       select: { id: true, name: true, email: true, isAdmin: true, createdAt: true },
