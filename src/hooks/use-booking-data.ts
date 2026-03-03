@@ -8,26 +8,31 @@ export function useCurrentUser() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) { setLoading(false); return; }
-    authApi.me()
-      .then(user => setCurrentUser(user))
-      .catch(() => { localStorage.removeItem('auth_token'); localStorage.removeItem('auth_user'); })
-      .finally(() => setLoading(false));
+    // For demo: always set mock admin user
+    const mockUser: AppUser = {
+      id: 'demo-admin',
+      name: 'Demo Admin',
+      email: 'admin@lab-booking.com',
+      isAdmin: true,
+    };
+    setCurrentUser(mockUser);
+    setLoading(false);
   }, []);
 
   const loginUser = async (email: string, password: string) => {
-    const data = await authApi.login(email, password);
-    localStorage.setItem('auth_token', data.token);
-    localStorage.setItem('auth_user', JSON.stringify(data.user));
-    setCurrentUser(data.user);
-    return data.user;
+    // Mock login - just return the user
+    const mockUser: AppUser = {
+      id: 'demo-admin',
+      name: 'Demo Admin',
+      email: 'admin@lab-booking.com',
+      isAdmin: true,
+    };
+    setCurrentUser(mockUser);
+    return mockUser;
   };
 
   const logoutUser = async () => {
-    try { await authApi.logout(); } catch { /* ignore */ }
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
+    // Mock logout - do nothing
     setCurrentUser(null);
   };
 
