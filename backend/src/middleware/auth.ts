@@ -13,6 +13,16 @@ export interface AuthRequest extends Request {
 
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    // For demo mode, skip authentication and set mock admin user
+    if (process.env.DEMO === 'true') {
+      req.user = {
+        id: 'demo-admin',
+        email: 'admin@lab-booking.com',
+        isAdmin: true,
+      };
+      return next();
+    }
+
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
       throw new AppError(401, 'No authentication token provided');

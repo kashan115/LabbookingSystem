@@ -14,7 +14,14 @@ import { ExcelUploadDialog } from '@/components/ExcelUploadDialog';
 import { Toaster } from '@/components/ui/sonner';
 
 function App() {
-  const { currentUser, loading, loginUser, logoutUser } = useCurrentUser();
+  // Demo mode: always logged in as admin
+  const currentUser = {
+    id: 'demo-admin',
+    name: 'Demo Admin',
+    email: 'admin@lab-booking.com',
+    isAdmin: true,
+  };
+
   const { servers, addServer, updateServer, deleteServer } = useServers();
   const { bookings, createBooking, extendBooking, cancelBooking } = useBookings();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -45,18 +52,6 @@ function App() {
     queryClient.invalidateQueries({ queryKey: ['servers'] });
     queryClient.invalidateQueries({ queryKey: ['bookings'] });
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
-        Loading…
-      </div>
-    );
-  }
-
-  if (!currentUser) {
-    return <LoginForm onLogin={loginUser} />;
-  }
 
   const renderContent = () => {
     switch (activeTab) {
