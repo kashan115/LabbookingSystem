@@ -1,6 +1,6 @@
 import { Router, Response, NextFunction } from 'express';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
-import { runAgentCycle, runWeeklyAISummary, getAgentStatus, getAgentLogs, isAgentEnabled, isLLMConfigured } from '../services/agentService';
+import { runAgentCycle, runWeeklyAISummary, getAgentStatus, getAgentLogs, isAgentEnabled, isLLMConfigured, handleAgentChat } from '../services/agentService';
 import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
@@ -44,6 +44,21 @@ router.post('/weekly-summary', authenticate, requireAdmin, async (_req: AuthRequ
     if (!isAgentEnabled()) throw new AppError(400, 'Agent is disabled.');
     await runWeeklyAISummary();
     res.json({ status: 'success', data: { message: 'Weekly AI summary generated and sent to admins.' } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/agent/chat — conversational agent messenger
+router.post("/chat", authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { message } = req.body;
+    if (!message || typeof message !== "string" || message.trim().length === 0) {
+      throw new AppError(400, "Message is required.");
+    }
+    if (message.length > 500) throw new AppError(400, "Message too long (max 500 chars).");
+    const reply = await handleAgentChat(message.trim(), req.user!.id);
+    res.json({ status: "success", data: { reply } });
   } catch (error) {
     next(error);
   }

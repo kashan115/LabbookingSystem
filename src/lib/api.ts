@@ -282,4 +282,5 @@ export const agentApi = {
   },
   runCycle: () => request<AgentCycleResult>('/agent/run-cycle', { method: 'POST' }),
   weeklySummary: () => request<{ message: string }>('/agent/weekly-summary', { method: 'POST' }),
+  chat: (message: string) => request<{ reply: string }>('/agent/chat', { method: 'POST', body: JSON.stringify({ message }) }),
 };

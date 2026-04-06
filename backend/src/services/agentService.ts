@@ -496,3 +496,221 @@ export async function getAgentLogs(limit = 50, taskType?: string) {
     take: limit,
   });
 }
+
+// ── Agent Chat ─────────────────────────────────────────────────────
+
+interface ChatContext {
+  servers: { name: string; status: string; cpuSpec: string; memorySpec: string; gpuSpec: string | null; location: string; pool: string | null }[];
+  activeBookings: { serverName: string; userName: string; purpose: string; endDate: Date; daysLeft: number; teamAssigned: string | null }[];
+  stats: { total: number; available: number; booked: number; maintenance: number; offline: number; utilizationRate: number };
+}
+
+async function gatherChatContext(): Promise<ChatContext> {
+  const servers = await prisma.server.findMany({
+    select: { name: true, status: true, cpuSpec: true, memorySpec: true, gpuSpec: true, location: true, pool: true },
+    orderBy: { name: 'asc' },
+  });
+
+  const bookings = await prisma.booking.findMany({
+    where: { status: { in: ['active', 'pending_renewal'] } },
+    include: { server: { select: { name: true } }, user: { select: { name: true } } },
+    orderBy: { endDate: 'asc' },
+  });
+
+  const total = servers.length;
+  const available = servers.filter(s => s.status === 'available').length;
+  const booked = servers.filter(s => s.status === 'booked').length;
+  const maintenance = servers.filter(s => s.status === 'maintenance').length;
+  const offline = servers.filter(s => s.status === 'offline').length;
+
+  return {
+    servers,
+    activeBookings: bookings.map(b => ({
+      serverName: b.server.name,
+      userName: b.user.name,
+      purpose: b.purpose,
+      endDate: b.endDate,
+      daysLeft: daysUntil(b.endDate),
+      teamAssigned: b.teamAssigned,
+    })),
+    stats: { total, available, booked, maintenance, offline, utilizationRate: total > 0 ? Math.round((booked / total) * 100) : 0 },
+  };
+}
+
+function buildRuleBasedResponse(question: string, ctx: ChatContext): string {
+  const q = question.toLowerCase();
+
+  // Available servers
+  if (q.includes('available') || q.includes('free') || q.includes('open') || q.includes('not booked')) {
+    const avail = ctx.servers.filter(s => s.status === 'available');
+    if (avail.length === 0) return '❌ No servers are currently available. All servers are either booked, in maintenance, or offline.';
+    const list = avail.map(s => {
+      const gpu = s.gpuSpec ? ` | GPU: ${s.gpuSpec}` : '';
+      return `• **${s.name}** — ${s.cpuSpec}, ${s.memorySpec}${gpu} (${s.location})`;
+    }).join('\n');
+    return `✅ **${avail.length} server(s) available:**\n\n${list}\n\nYou can book any of these from the Dashboard or Servers page.`;
+  }
+
+  // Booked servers / who booked
+  if (q.includes('booked') || q.includes('reserved') || q.includes('in use') || q.includes('who is using')) {
+    const active = ctx.activeBookings;
+    if (active.length === 0) return '📋 No active bookings at the moment. All servers are free!';
+    const list = active.map(b => {
+      const days = b.daysLeft > 0 ? `${b.daysLeft}d left` : '⚠️ overdue';
+      return `• **${b.serverName}** — ${b.userName} (${b.purpose}) [${days}]`;
+    }).join('\n');
+    return `📋 **${active.length} active booking(s):**\n\n${list}`;
+  }
+
+  // Expiring soon
+  if (q.includes('expir') || q.includes('ending') || q.includes('due') || q.includes('renew')) {
+    const expiring = ctx.activeBookings.filter(b => b.daysLeft <= 7);
+    if (expiring.length === 0) return '✅ No bookings expiring within the next 7 days.';
+    const list = expiring.map(b => {
+      const urgency = b.daysLeft <= 0 ? '🚨 OVERDUE' : b.daysLeft <= 3 ? '⚠️ Urgent' : '⏰ Soon';
+      return `• ${urgency} **${b.serverName}** — ${b.userName} (${b.daysLeft <= 0 ? 'expired' : `${b.daysLeft}d left`})`;
+    }).join('\n');
+    return `⏰ **${expiring.length} booking(s) expiring within 7 days:**\n\n${list}\n\nUsers have been notified to renew or release.`;
+  }
+
+  // Status / overview / utilization
+  if (q.includes('status') || q.includes('overview') || q.includes('utilization') || q.includes('summary') || q.includes('how many')) {
+    const s = ctx.stats;
+    return `📊 **Lab Status Overview:**\n\n` +
+      `• Total Servers: **${s.total}**\n` +
+      `• ✅ Available: **${s.available}**\n` +
+      `• 🔵 Booked: **${s.booked}**\n` +
+      `• 🔧 Maintenance: **${s.maintenance}**\n` +
+      `• 🔴 Offline: **${s.offline}**\n` +
+      `• Utilization: **${s.utilizationRate}%**\n\n` +
+      `Active bookings: ${ctx.activeBookings.length} | Expiring ≤7d: ${ctx.activeBookings.filter(b => b.daysLeft <= 7).length}`;
+  }
+
+  // GPU servers
+  if (q.includes('gpu') || q.includes('nvidia') || q.includes('h100') || q.includes('a100') || q.includes('graphics')) {
+    const gpuServers = ctx.servers.filter(s => s.gpuSpec);
+    if (gpuServers.length === 0) return '❌ No GPU-equipped servers found.';
+    const list = gpuServers.map(s => {
+      const status = s.status === 'available' ? '✅' : s.status === 'booked' ? '🔵' : '⚪';
+      return `• ${status} **${s.name}** — ${s.gpuSpec} (${s.status})`;
+    }).join('\n');
+    return `🎮 **${gpuServers.length} GPU server(s):**\n\n${list}`;
+  }
+
+  // ARM servers
+  if (q.includes('arm') || q.includes('cobalt') || q.includes('neoverse') || q.includes('graviton') || q.includes('ampere')) {
+    const armServers = ctx.servers.filter(s => {
+      const cpu = s.cpuSpec.toLowerCase();
+      return cpu.includes('arm') || cpu.includes('neoverse') || cpu.includes('cobalt') || cpu.includes('ampere') || cpu.includes('graviton') || cpu.includes('kunpeng');
+    });
+    const list = armServers.map(s => {
+      const status = s.status === 'available' ? '✅' : s.status === 'booked' ? '🔵' : '⚪';
+      return `• ${status} **${s.name}** — ${s.cpuSpec} (${s.status})`;
+    }).join('\n');
+    return `🔧 **${armServers.length} ARM server(s):**\n\n${list}`;
+  }
+
+  // Intel servers
+  if (q.includes('intel') || q.includes('xeon') || q.includes('sapphire') || q.includes('emerald') || q.includes('ice lake')) {
+    const intelServers = ctx.servers.filter(s => s.cpuSpec.toLowerCase().includes('intel') || s.cpuSpec.toLowerCase().includes('xeon'));
+    const list = intelServers.map(s => {
+      const status = s.status === 'available' ? '✅' : s.status === 'booked' ? '🔵' : '⚪';
+      return `• ${status} **${s.name}** — ${s.cpuSpec} (${s.status})`;
+    }).join('\n');
+    return `🔷 **${intelServers.length} Intel server(s):**\n\n${list}`;
+  }
+
+  // AMD servers
+  if (q.includes('amd') || q.includes('epyc') || q.includes('ryzen') || q.includes('genoa') || q.includes('turin')) {
+    const amdServers = ctx.servers.filter(s => s.cpuSpec.toLowerCase().includes('amd') || s.cpuSpec.toLowerCase().includes('epyc') || s.cpuSpec.toLowerCase().includes('ryzen'));
+    const list = amdServers.map(s => {
+      const status = s.status === 'available' ? '✅' : s.status === 'booked' ? '🔵' : '⚪';
+      return `• ${status} **${s.name}** — ${s.cpuSpec} (${s.status})`;
+    }).join('\n');
+    return `🔶 **${amdServers.length} AMD server(s):**\n\n${list}`;
+  }
+
+  // Specific server lookup
+  const serverMatch = ctx.servers.find(s => q.includes(s.name.toLowerCase()));
+  if (serverMatch) {
+    const booking = ctx.activeBookings.find(b => b.serverName === serverMatch.name);
+    const gpu = serverMatch.gpuSpec ? `\n• GPU: ${serverMatch.gpuSpec}` : '';
+    let info = `🖥️ **${serverMatch.name}**\n\n` +
+      `• CPU: ${serverMatch.cpuSpec}\n• Memory: ${serverMatch.memorySpec}${gpu}\n` +
+      `• Location: ${serverMatch.location}\n• Status: **${serverMatch.status}**`;
+    if (booking) {
+      info += `\n\n📋 Currently booked by **${booking.userName}** for "${booking.purpose}" (${booking.daysLeft > 0 ? `${booking.daysLeft}d left` : 'overdue'})`;
+    }
+    return info;
+  }
+
+  // Maintenance / offline
+  if (q.includes('maintenance') || q.includes('offline') || q.includes('down')) {
+    const down = ctx.servers.filter(s => s.status === 'maintenance' || s.status === 'offline');
+    if (down.length === 0) return '✅ All servers are online! None in maintenance or offline.';
+    const list = down.map(s => `• **${s.name}** — ${s.status} (${s.location})`).join('\n');
+    return `⚠️ **${down.length} server(s) currently unavailable:**\n\n${list}`;
+  }
+
+  // Teams
+  if (q.includes('team') || q.includes('who')) {
+    const teams: Record<string, string[]> = {};
+    for (const b of ctx.activeBookings) {
+      const team = b.teamAssigned || 'Unassigned';
+      if (!teams[team]) teams[team] = [];
+      teams[team].push(b.serverName);
+    }
+    if (Object.keys(teams).length === 0) return 'No active team assignments at the moment.';
+    const list = Object.entries(teams).map(([team, servers]) =>
+      `• **${team}**: ${servers.join(', ')} (${servers.length} server${servers.length > 1 ? 's' : ''})`
+    ).join('\n');
+    return `👥 **Team allocations:**\n\n${list}`;
+  }
+
+  // Help / fallback
+  return `🤖 I'm the LabOps Agent! I can help you with:\n\n` +
+    `• **"What servers are available?"** — see free servers\n` +
+    `• **"Show booked servers"** — who's using what\n` +
+    `• **"Lab status"** — utilization overview\n` +
+    `• **"Expiring bookings"** — what's due soon\n` +
+    `• **"Show GPU servers"** — filter by GPU\n` +
+    `• **"Show ARM / Intel / AMD servers"** — filter by architecture\n` +
+    `• **"Show maintenance servers"** — what's offline\n` +
+    `• **"Team allocations"** — who has what\n` +
+    `• Or ask about a specific server by name!\n\n` +
+    `Try asking a question about the lab.`;
+}
+
+export async function handleAgentChat(message: string, userId: string): Promise<string> {
+  const ctx = await gatherChatContext();
+
+  // If LLM is configured, use it for intelligent responses
+  if (isLLMConfigured()) {
+    const systemPrompt = `You are LabOps Sentinel, an AI assistant for a lab server booking system. Answer questions about server availability, bookings, and lab operations.
+
+CURRENT LAB DATA:
+${JSON.stringify({
+  stats: ctx.stats,
+  servers: ctx.servers.map(s => ({ name: s.name, status: s.status, cpu: s.cpuSpec, memory: s.memorySpec, gpu: s.gpuSpec, location: s.location })),
+  activeBookings: ctx.activeBookings.map(b => ({ server: b.serverName, user: b.userName, purpose: b.purpose, daysLeft: b.daysLeft, team: b.teamAssigned })),
+}, null, 0)}
+
+INSTRUCTIONS:
+- Be concise and helpful. Use markdown formatting with bold for emphasis.
+- Reference real server names and data from above.
+- If asked about availability, list actual available servers.
+- If asked about specific hardware (GPU, ARM, Intel, AMD), filter from the data.
+- Use emoji sparingly for visual clarity.
+- If the question is unrelated to the lab, politely redirect to lab topics.`;
+
+    const llmResponse = await callLLM([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: message },
+    ]);
+
+    if (llmResponse) return llmResponse;
+  }
+
+  // Fallback to rule-based
+  return buildRuleBasedResponse(message, ctx);
+}

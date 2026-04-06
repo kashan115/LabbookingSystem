@@ -10,6 +10,7 @@ import { UserManagement } from '@/components/UserManagement';
 import { Communications } from '@/components/Communications';
 import { Reports } from '@/components/Reports';
 import { AgentDashboard } from '@/components/AgentDashboard';
+import { AgentChat } from '@/components/AgentChat';
 import { Toaster } from '@/components/ui/sonner';
 
 function App() {
@@ -118,6 +119,7 @@ function App() {
       <main className="container mx-auto px-4 py-8">
         {renderContent()}
       </main>
+      <AgentChat />
       <Toaster />
     </div>
   );
