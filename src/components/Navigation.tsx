@@ -19,6 +19,7 @@ const mainTabs = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'communications', label: 'Communications', icon: '📬' },
   { id: 'reports', label: 'Reports', icon: '📈' },
+  { id: 'agent', label: 'Agent', icon: '🤖' },
 ];
 
 export function Navigation({ currentUser, activeTab, onTabChange, onLogout, darkMode, onToggleDarkMode }: NavigationProps) {

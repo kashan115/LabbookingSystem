@@ -10,7 +10,9 @@ import serverRoutes from './routes/serverRoutes';
 import bookingRoutes from './routes/bookingRoutes';
 import userRoutes from './routes/userRoutes';
 import adminRoutes from './routes/adminRoutes';
+import agentRoutes from './routes/agentRoutes';
 import { startScheduler } from './services/scheduler';
+import { startAgentScheduler } from './services/agentScheduler';
 import { JWT_MIN_LENGTH, RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_REQUESTS, REQUEST_BODY_LIMIT } from './config/constants';
 
 dotenv.config();
@@ -88,6 +90,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/servers', serverRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/agent', agentRoutes);
 
 // 404
 app.use('*', (_req, res) => res.status(404).json({ status: 'error', message: 'Route not found' }));
@@ -109,6 +112,7 @@ const start = async () => {
     await prisma.$connect();
     logger.info('PostgreSQL connected');
     startScheduler();
+    startAgentScheduler();
     app.listen(PORT, () => {
       logger.info(`API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
     });

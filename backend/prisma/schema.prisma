@@ -96,3 +96,36 @@ enum BookingStatus {
   cancelled
   pending_renewal
 }
+
+model AgentLog {
+  id        String        @id @default(uuid())
+  taskType  AgentTaskType @map("task_type")
+  severity  AgentSeverity @default(info)
+  title     String
+  detail    String?       @db.Text
+  aiInsight String?       @map("ai_insight") @db.Text
+  metadata  Json?
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  @@index([taskType])
+  @@index([severity])
+  @@index([createdAt])
+  @@map("agent_logs")
+}
+
+enum AgentTaskType {
+  booking_expiry_check
+  booking_reminder
+  booking_completed
+  server_status_sync
+  weekly_summary
+  utilization_analysis
+  agent_cycle
+}
+
+enum AgentSeverity {
+  info
+  warning
+  action
+  error
+}

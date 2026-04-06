@@ -224,3 +224,62 @@ export const uploadApi = {
     URL.revokeObjectURL(url);
   },
 };
+
+// ── Agent (Smart Booking Agent) ───────────────────────────────────
+export interface AgentStatus {
+  enabled: boolean;
+  llmConfigured: boolean;
+  emailConfigured: boolean;
+  lastCycle: {
+    timestamp: string;
+    title: string;
+    aiInsight: string | null;
+  } | null;
+  activity24h: {
+    actions: number;
+    warnings: number;
+    errors: number;
+  };
+  systemSnapshot: {
+    totalServers: number;
+    available: number;
+    booked: number;
+    maintenance: number;
+    offline: number;
+    activeBookings: number;
+    expiringIn3Days: number;
+    overdueBookings: number;
+    utilizationRate: number;
+  };
+}
+
+export interface AgentLogEntry {
+  id: string;
+  taskType: string;
+  severity: 'info' | 'warning' | 'action' | 'error';
+  title: string;
+  detail: string | null;
+  aiInsight: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface AgentCycleResult {
+  timestamp: string;
+  reminders: { reminded: number; errors: number };
+  completions: { completed: number; errors: number };
+  statusSync: { fixed: number };
+  analysis: string | null;
+  duration: number;
+}
+
+export const agentApi = {
+  status: () => request<AgentStatus>('/agent/status'),
+  logs: (limit = 50, taskType?: string) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (taskType) params.set('taskType', taskType);
+    return request<AgentLogEntry[]>(`/agent/logs?${params}`);
+  },
+  runCycle: () => request<AgentCycleResult>('/agent/run-cycle', { method: 'POST' }),
+  weeklySummary: () => request<{ message: string }>('/agent/weekly-summary', { method: 'POST' }),
+};

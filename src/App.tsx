@@ -9,6 +9,7 @@ import { ServerList } from '@/components/ServerList';
 import { UserManagement } from '@/components/UserManagement';
 import { Communications } from '@/components/Communications';
 import { Reports } from '@/components/Reports';
+import { AgentDashboard } from '@/components/AgentDashboard';
 import { Toaster } from '@/components/ui/sonner';
 
 function App() {
@@ -97,6 +98,8 @@ function App() {
             onServerDelete={deleteServer}
           />
         );
+      case 'agent':
+        return <AgentDashboard isAdmin={currentUser.isAdmin} />;
       default:
         return null;
     }
