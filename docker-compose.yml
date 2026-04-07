@@ -40,6 +40,11 @@ services:
       AGENT_LLM_ENDPOINT: "https://kkopenailearn.openai.azure.com/openai/responses?api-version=2025-04-01-preview"
       AGENT_LLM_API_KEY: "${AGENT_LLM_API_KEY:-aa10ceffe7d0421b9f62fa160dec824d}"
       AGENT_LLM_MODEL: "gpt-4o"
+      SMTP_HOST: "sandbox.smtp.mailtrap.io"
+      SMTP_PORT: "2525"
+      SMTP_USER: "69f80fbf57d9e9"
+      SMTP_PASS: "${SMTP_PASS:-f8fc2fe2337c1a}"
+      SMTP_FROM: "Lab Booking System <noreply@yourdomain.com>"
     ports:
       - "${BACKEND_PORT:-3001}:3001"
     depends_on:

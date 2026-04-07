@@ -1,7 +1,7 @@
 import prisma from '../config/database';
 import logger from '../config/logger';
 import { MS_PER_DAY } from '../config/constants';
-import { sendWeeklyDigest, isEmailConfigured } from './emailService';
+import { sendWeeklyDigest, sendTestEmail, isEmailConfigured } from './emailService';
 import { sendAgentReminderEmail, sendBookingExpiredEmail, sendAIWeeklySummaryEmail } from './agentEmailService';
 
 // ── LLM Integration ────────────────────────────────────────────────
@@ -712,6 +712,34 @@ function buildRuleBasedResponse(question: string, ctx: ChatContext): string {
 }
 
 export async function handleAgentChat(message: string, userId: string): Promise<string> {
+  // ── Email action: intercept before LLM so it's never refused ──
+  if (isEmailConfigured()) {
+    // "send * email to someone@domain.com"
+    const emailMatch = message.match(/send.*?(?:test\s+)?email.*?(?:to\s+)?([\w.+\-]+@[\w.\-]+\.[a-z]{2,})/i)
+                    || message.match(/email\s+([\w.+\-]+@[\w.\-]+\.[a-z]{2,})/i);
+    if (emailMatch) {
+      const targetEmail = emailMatch[1];
+      try {
+        await sendTestEmail(targetEmail);
+        return `✅ Test email sent to **${targetEmail}**! Check the inbox (or Mailtrap sandbox if you're using sandbox SMTP). The email confirms the SMTP connection is working correctly.`;
+      } catch (err) {
+        return `❌ Failed to send email to **${targetEmail}**: ${(err as Error).message}`;
+      }
+    }
+
+    // General "send email" without address
+    if (/send.*email|email.*send/i.test(message) && !/digest/i.test(message)) {
+      return `📧 I can send emails! Please specify the recipient address.\n\nExample: *"Send a test email to someone@example.com"*`;
+    }
+
+    // Weekly digest
+    if (/weekly.*digest|send.*digest|digest.*email/i.test(message)) {
+      return `📧 The weekly digest is emailed to all lab users every **Monday at 08:00 UTC** automatically.\n\nAdmins can also trigger it manually from **Admin Panel → Send Weekly Digest**.`;
+    }
+  } else if (/send.*email|email.*to/i.test(message)) {
+    return `⚠️ Email is not configured on this system. Set SMTP credentials in the backend environment to enable email.`;
+  }
+
   const ctx = await gatherChatContext();
 
   // If LLM is configured, use it for intelligent responses
@@ -731,7 +759,9 @@ INSTRUCTIONS:
 - If asked about availability, list actual available servers.
 - If asked about specific hardware (GPU, ARM, Intel, AMD), filter from the data.
 - Use emoji sparingly for visual clarity.
-- If the question is unrelated to the lab, politely redirect to lab topics.`;
+- If the question is unrelated to the lab, politely redirect to lab topics.
+- You CAN send test emails: if asked to send an email to an address, say you are doing it — the system handles it.
+- For email requests, confirm the email address you will send to.`;
 
     const llmResponse = await callLLM([
       { role: 'system', content: systemPrompt },
