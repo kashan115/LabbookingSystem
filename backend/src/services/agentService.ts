@@ -20,17 +20,41 @@ async function callLLM(messages: LLMMessage[]): Promise<string | null> {
     return null; // LLM not configured — rule-based only
   }
 
+  // Detect Azure Responses API vs standard OpenAI Chat Completions API
+  const isResponsesApi = endpoint.includes('/responses');
+
+  // Azure Responses API uses 'api-key' header; OpenAI uses 'Authorization: Bearer'
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(isResponsesApi
+      ? { 'api-key': apiKey }
+      : { 'Authorization': `Bearer ${apiKey}` }),
+  };
+
+  let body: Record<string, unknown>;
+  if (isResponsesApi) {
+    // Azure Responses API format — system message goes in 'instructions', rest in 'input'
+    const systemMsg = messages.find(m => m.role === 'system');
+    const inputMsgs = messages.filter(m => m.role !== 'system');
+    body = {
+      model,
+      input: inputMsgs,
+      max_output_tokens: 1000,
+      temperature: 0.3,
+      ...(systemMsg ? { instructions: systemMsg.content } : {}),
+    };
+  } else {
+    body = { model, messages, max_tokens: 1000, temperature: 0.3 };
+  }
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
 
     const res = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ model, messages, max_tokens: 1000, temperature: 0.3 }),
+      headers,
+      body: JSON.stringify(body),
       signal: controller.signal,
     });
 
@@ -42,6 +66,12 @@ async function callLLM(messages: LLMMessage[]): Promise<string | null> {
     }
 
     const data: any = await res.json();
+
+    if (isResponsesApi) {
+      // Azure Responses API: output[0].content[0].text
+      return data.output?.[0]?.content?.[0]?.text || null;
+    }
+    // Standard OpenAI Chat Completions
     return data.choices?.[0]?.message?.content || null;
   } catch (err) {
     logger.warn(`LLM call failed: ${(err as Error).message}`);

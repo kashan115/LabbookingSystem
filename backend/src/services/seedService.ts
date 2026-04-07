@@ -1,9 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../config/database';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
-
-async function main() {
+export async function seedDatabase() {
   console.log('Starting database seeding...');
 
   // Clear existing data
@@ -556,11 +554,3 @@ async function main() {
   console.log('   tom@lab.com     sofia@lab.com');
 }
 
-main()
-  .catch((e) => {
-    console.error('Error during seeding:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });

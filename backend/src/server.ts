@@ -107,10 +107,21 @@ const shutdown = async (signal: string) => {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
+async function seedIfEmpty() {
+  const userCount = await prisma.user.count();
+  if (userCount >= 5) return; // data already exists — skip
+
+  logger.info('Empty database detected — running demo seed...');
+  const { seedDatabase } = await import('./services/seedService');
+  await seedDatabase();
+  logger.info('Demo seed complete');
+}
+
 const start = async () => {
   try {
     await prisma.$connect();
     logger.info('PostgreSQL connected');
+    await seedIfEmpty();
     startScheduler();
     startAgentScheduler();
     app.listen(PORT, () => {
