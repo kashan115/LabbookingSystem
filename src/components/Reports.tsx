@@ -9,8 +9,8 @@ import { useServers, useBookings } from '@/hooks/use-booking-data';
 import { getServerStatus, calculateDaysBooked, formatDate } from '@/lib/booking-utils';
 
 export function Reports() {
-  const { data: servers = [] } = useServers();
-  const { data: bookings = [] } = useBookings();
+  const { servers = [] } = useServers();
+  const { bookings = [] } = useBookings();
   const [ownerFilter, setOwnerFilter] = useState('');
   const [serverFilter, setServerFilter] = useState('');
   const [sortBy, setSortBy] = useState('endDate');
@@ -75,7 +75,7 @@ export function Reports() {
       const duration = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
       const isOverdue = end < new Date() && b.status === 'active';
       return {
-        id: b.id, server: server?.name || b.serverId, owner: b.bookedBy,
+        id: b.id, server: server?.name || b.server?.name || b.serverId, owner: b.user?.name || b.userName || 'Unknown',
         startDate: b.startDate, endDate: b.endDate, duration,
         status: isOverdue ? 'Overdue' : b.status === 'active' ? 'Active' : b.status === 'completed' ? 'Completed' : 'Cancelled',
       };
@@ -98,7 +98,7 @@ export function Reports() {
       return {
         id: b.id,
         action: isOverdue ? 'Overdue' : b.status === 'active' ? 'Booked' : 'Completed',
-        detail: `${b.bookedBy} — ${server?.name || b.serverId}`,
+        detail: `${b.user?.name || b.userName || 'Unknown'} — ${server?.name || b.server?.name || b.serverId}`,
         time: formatDate(b.startDate),
       };
     });
