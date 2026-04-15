@@ -99,7 +99,7 @@ export async function seedDatabase() {
 
   const srv05 = await prisma.server.create({ data: {
     name: 'C41431103M1101A',
-    cpuSpec: 'Arm Neoverse V3 Cobalt 300 (144 cores)',
+    cpuSpec: 'Arm Neoverse V3 (144 cores)',
     memorySpec: '1TB DDR5',
     storageSpec: '16TB NVMe SSD RAID',
     gpuSpec: '2x NVIDIA H200 141GB',
@@ -115,7 +115,7 @@ export async function seedDatabase() {
 
   const srv06 = await prisma.server.create({ data: {
     name: 'C41431103M1102B',
-    cpuSpec: 'Arm Neoverse V3 Cobalt 300 (144 cores)',
+    cpuSpec: 'Arm Neoverse V3 (144 cores)',
     memorySpec: '1TB DDR5',
     storageSpec: '16TB NVMe SSD RAID',
     status: 'maintenance',

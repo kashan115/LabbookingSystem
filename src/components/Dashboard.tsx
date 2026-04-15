@@ -33,7 +33,6 @@ function detectGen(cpu: string): string {
   const c = cpu.toLowerCase();
   if (c.includes('cobalt 100') || c.includes('gen 9') || c.includes('9th gen')) return 'Gen 9 Cobalt 100';
   if (c.includes('cobalt 200') || c.includes('gen 11') || c.includes('11th gen')) return 'Gen 11 Cobalt 200';
-  if (c.includes('cobalt 300') || c.includes('gen 12') || c.includes('12th gen')) return 'Gen 12 Cobalt 300';
   if (c.includes('gen 4') || c.includes('4th gen') || c.includes('genoa') || c.includes('sapphire')) return 'Gen 4';
   if (c.includes('gen 5') || c.includes('5th gen') || c.includes('emerald')) return 'Gen 5';
   return '';
